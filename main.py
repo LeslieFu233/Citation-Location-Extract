@@ -8,7 +8,15 @@ title_sentences = []
 title_sentences.append(("Citation ID","Location ID", "Citing Article Title", "Referenced Paper Title", "Citation Context", "Citation Function", "Citation Polarity"))
 
 def parse_target_group(file_name_without_extension):
-    """Parse the target group of the citation"""
+    """Parse the target group of the citation.
+
+    Args:
+        file_name_without_extension (str): The name of the file without the extension.
+
+    Returns:
+        tuple: A tuple containing the referenced title, author, DOI, and published year.
+               If the file name is not recognized, all values in the tuple will be None.
+    """
     if file_name_without_extension == 'ERA5-Land':
         referenced_title = "Era5-land: a state-of-the-art global reanalysis dataset for land applications"
         referenced_author = "Munoz-Sabater"
@@ -66,6 +74,15 @@ def parse_target_group(file_name_without_extension):
 def parse_citation(cite_json_path: str, start_id: int):
     """
     Parses citation information from a JSON file and extracts relevant data.
+    This JSON file's every item is a paper title(key) and the path of tei-xml file(value).
+
+    Such as:
+    {
+        "paper_title": "tei-xml file path",
+        "paper_title2": "tei-xml file path2",
+        ...
+    }
+    Please make sure your JSON format is correct.
 
     Args:
         cite_json_path (str): The path to the JSON file containing citation data.
@@ -77,6 +94,7 @@ def parse_citation(cite_json_path: str, start_id: int):
     xml_paths = []
     with open(file_path, 'r', encoding='utf-8') as file:
         data = json.load(file)
+        # data.keys() returns all titles of the papers
         keys_list = list(data.keys())
 
     file_name_with_extension_os = os.path.basename(cite_json_path)
@@ -85,6 +103,7 @@ def parse_citation(cite_json_path: str, start_id: int):
     print(cite_json_path, referenced_title)
     
     for key_cite_title in keys_list:
+        # data[key] means tei file path
         pdf_path = data[key_cite_title]
         pdf_dir, pdf_filename = os.path.split(pdf_path)
         xml_filename = os.path.splitext(pdf_filename)[0] + '.xml'
@@ -121,6 +140,7 @@ def list_files_in_directory(directory):
             file_paths.append(os.path.join(root, file))
     return file_paths
 
+# example
 directory = './papers'
 list_files = [
     './papers/ERA5-Land.json',

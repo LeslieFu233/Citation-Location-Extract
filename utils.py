@@ -3,15 +3,66 @@ from MatchObject import SimilarityMeasure, BinaryMeasure
 from collections import OrderedDict
 import re
 import hashlib
+import PyPDF2
+
+def is_valid_pdf(file_path):
+    """
+    Checks if a PDF file is valid by attempting to open it and checking if it has at least one page.
+
+    Args:
+        file_path (str): The path to the PDF file.
+
+    Returns:
+        bool: True if the PDF file is valid, False otherwise.
+    """
+    try:
+        with open(file_path, 'rb') as pdf_file:
+            pdf_reader = PyPDF2.PdfFileReader(pdf_file)
+            if pdf_reader.getNumPages() > 0:
+                return True
+            else:
+                return False
+    except Exception as e:
+        return False
+
+def add_comma_to_middle_lines(file_path):
+    """
+    Adds a comma to the end of each line, except for the first and last line, in a given file.
+
+    Args:
+        file_path (str): The path to the file.
+    """
+    lines = []
+    with open(file_path, 'r', encoding='utf-8') as file:
+        lines = file.readlines()
+
+    # Process lines except for the first and last line
+    for i in range(1, len(lines) - 2):
+        lines[i] = lines[i].rstrip('\n') + ',\n'
+
+    with open(file_path, 'w', encoding='utf-8') as file:
+        file.writelines(lines)
 
 def extract_first_number(str):
+    """Extract the first number from a string."""
     match = re.search(r'\d+', str)
     return int(match.group(0)) if match else None
 
 def get_related_sentence(index, sentences=[]):
+    """
+    Returns a string containing the sentences from the given list, with the sentence at the specified index marked with "######citaion#####".
+
+    Parameters:
+    index (int): The index of the sentence to mark as a citation.
+    sentences (list): The list of sentences to process.
+
+    Returns:
+    str: A string containing the sentences, with the citation marked.
+    """
     related_sentence = ""
     for i in range(len(sentences)):
-        if(sentences[i].text == None): continue
+        if sentences[i].text == None:
+            continue
         if i == index:
             related_sentence += sentences[i].text + " ######citaion##### "
         else:
@@ -19,6 +70,16 @@ def get_related_sentence(index, sentences=[]):
     return related_sentence
 
 def getBiblStructs(tei_path, namespace = "{http://www.tei-c.org/ns/1.0}"):
+    """
+    Retrieves the bibliographic structures from a TEI XML file.
+
+    Args:
+        tei_path (str): The path to the TEI XML file.
+        namespace (str, optional): The namespace used in the TEI XML file. Defaults to "{http://www.tei-c.org/ns/1.0}".
+
+    Returns:
+        Element: The bibliographic structures as an Element object, or None if not found.
+    """
     try:
         tree = ET.parse(tei_path)
     except ET.ParseError as e:
@@ -35,11 +96,26 @@ def getBiblStructs(tei_path, namespace = "{http://www.tei-c.org/ns/1.0}"):
     bibls = bibls.find(namespace + 'listBibl')
     return bibls
 
-def matchCitationHead(tei_path, bibl_id, namespace = "{http://www.tei-c.org/ns/1.0}", surname=None, year=None):
+def matchCitationHead(tei_path, bibl_id, namespace="{http://www.tei-c.org/ns/1.0}", surname=None, year=None):
+    """
+    Matches the citation head in a TEI XML file based on the given parameters.
+
+    Args:
+        tei_path (str): The path to the TEI XML file.
+        bibl_id (str): The ID of the citation to match.
+        namespace (str, optional): The namespace of the TEI XML file. Defaults to "{http://www.tei-c.org/ns/1.0}".
+        surname (list, optional): A list of surnames to match in the citation text. Defaults to None.
+        year (str, optional): The year to match in the citation text. Defaults to None.
+
+    Returns:
+        list: A list of matched citation items, each containing the section title and the related sentence.
+
+    """
     tree = ET.parse(tei_path)
     body = None
     abstract = None 
     matched_items = []
+    # get abstract and body from tei tree
     for i in tree.iter():
         if 'abstract' in i.tag:
             abstract = i
@@ -49,6 +125,7 @@ def matchCitationHead(tei_path, bibl_id, namespace = "{http://www.tei-c.org/ns/1
     abstract_title = abstract.find(namespace + 'div')
     if abstract_title != None:
         sentences = abstract_title.findall('.//' + namespace + 's')
+        # match bibl_id in abstract's every sentence
         for s_index, sentence in enumerate(sentences):
             refs = sentence.findall('.//' + namespace + 'ref[@type="bibr"]')
             for ref in refs:
@@ -62,6 +139,7 @@ def matchCitationHead(tei_path, bibl_id, namespace = "{http://www.tei-c.org/ns/1
     paras = body.findall(namespace + 'div')
     head_title_dic = OrderedDict()
     for index, para in enumerate(paras):
+        # get head title and sentences from every para
         head_title = para.find(namespace + 'head')
         if(head_title != None):
             head_level = get_head_level(head_title)
@@ -69,6 +147,7 @@ def matchCitationHead(tei_path, bibl_id, namespace = "{http://www.tei-c.org/ns/1
             head_title_dic[head_title] = head_level
         sentences = para.findall('.//' + namespace + 's')
         for s_index, sentence in enumerate(sentences):
+            # find all references in the sentence
             refs = sentence.findall('.//' + namespace + 'ref[@type="bibr"]')
             for ref in refs:
                 match_bibl_id =  ref.attrib.get('target')
@@ -87,6 +166,20 @@ def matchCitationHead(tei_path, bibl_id, namespace = "{http://www.tei-c.org/ns/1
     return matched_items
 
 def getMatch(biblStruct:ET.Element, namespace = "{http://www.tei-c.org/ns/1.0}"):
+    """
+    Extracts information from a TEI XML element representing a bibliographic structure.
+
+    Args:
+        biblStruct (ET.Element): The TEI XML element representing the bibliographic structure.
+        namespace (str, optional): The namespace used in the TEI XML element. Defaults to "{http://www.tei-c.org/ns/1.0}".
+
+    Returns:
+        tuple: A tuple containing the extracted information in the following order: 
+               - title_text (str): The main title of the bibliographic structure.
+               - first_author_surname (str): The surname of the first author.
+               - doi_no (str): The DOI number of the bibliographic structure.
+
+    """
     analytic = biblStruct.find(namespace + 'analytic')
     title_text = None
     first_author_surname = None
@@ -113,15 +206,16 @@ def getMatch(biblStruct:ET.Element, namespace = "{http://www.tei-c.org/ns/1.0}")
     return (title_text, first_author_surname, doi_no)
 
 def getMatchScore(target_group:tuple, match_group:tuple, match_weights:tuple):
-    """如果以后需要修改或者新增相似度度量模式，就在这里改，否则，新增要匹配的项统统在调用的地方修改
+    """Calculate the match score between target_group and match_group based on match_weights.
+       Please refer to MatchObject.py to see the definition of SimilarityMeasure and BinaryMeasure.
 
     Args:
-        target_group (tuple): _description_
-        match_group (tuple): _description_
-        match_weights (tuple): _description_
+        target_group (tuple): A tuple representing the target group.
+        match_group (tuple): A tuple representing the match group.
+        match_weights (tuple): A tuple representing the match weights.
 
     Returns:
-        _type_: _description_
+        float: The match score between target_group and match_group. Higher scores indicate better matches.
     """
     if match_group == None: return 0
     assert len(target_group) == len(match_group) == len(match_weights), "Tuples' length presents match types' amount. "
@@ -143,6 +237,20 @@ def getBestMatchBiblid(
     bibls:ET.Element,
     namespace = "{http://www.tei-c.org/ns/1.0}", 
     match_weights = [('title', 0.8, "similarity"),('surname', 0.1, "similarity"),('doi', 0.1, "binary")]):
+    """
+    Finds the best matching bibl ID based on the target group and match weights.
+
+    Parameters:
+    - target_group: The target group to match against.
+    - bibls: The XML element containing the biblStruct elements.
+    - namespace: The namespace of the XML elements (default: "{http://www.tei-c.org/ns/1.0}").
+    - match_weights: A list of tuples specifying the match weights for different attributes (default: [('title', 0.8, "similarity"),('surname', 0.1, "similarity"),('doi', 0.1, "binary")]).
+
+    Returns:
+    - The best matching bibl ID.
+
+    If no match is found, it returns "None_Bibl".
+    """
     match_scores = []
     for bibl in bibls.iter(namespace + 'biblStruct'):
         bibl_id = next(iter(bibl.attrib.values()))
@@ -155,28 +263,69 @@ def getBestMatchBiblid(
     return max_bibl_id
 
 def get_head_level(head_title:ET.Element, init_head_level=0):
+    """
+    Get the level of a head title element.
+
+    Parameters:
+    - head_title (ET.Element): The head title element.
+    - init_head_level (int): The initial head level.
+
+    Returns:
+    - int: The level of the head title element.
+    """
     head_level = head_title.attrib.get('n')
     if head_level == None:
         return init_head_level
     head_level = head_level.split('.')
     head_level = len(list(filter(lambda s: s != "", head_level)))
     return head_level
-def get_parent_head(head_title_dic:OrderedDict, head_title, init_head_level=0):
+
+from collections import OrderedDict
+
+def get_parent_head(head_title_dic: OrderedDict, head_title, init_head_level=0):
+    """
+    Returns the parent head title based on the given head title dictionary and target head title.
+
+    Parameters:
+    head_title_dic (OrderedDict): The dictionary containing the head titles and their levels.
+    head_title (str): The target head title.
+    init_head_level (int): The initial head level.
+
+    Returns:
+    str: The parent head title.
+
+    """
     target_level = 1
     find_flag = False
     for title, level in reversed(head_title_dic.items()):
         if find_flag:
-            if level == target_level: return title
-            else: continue
+            if level == target_level:
+                return title
+            else:
+                continue
         elif title == head_title:
-            if level == 0 or level == target_level: return title
+            if level == 0 or level == target_level:
+                return title
             find_flag = True
 
-def generate_citation_hash(citing_title, referenced_title, citing_index):
+import hashlib
 
+def generate_citation_hash(citing_title, referenced_title, citing_index):
+    """
+    Generate a hash value for a citation based on the citing title, referenced title, and citing index.
+
+    Args:
+        citing_title (str): The title of the citing document.
+        referenced_title (str): The title of the referenced document.
+        citing_index (int): The index of the citation.
+
+    Returns:
+        str: The hash value generated for the citation.
+    """
     unique_string = f"{citing_title}-{referenced_title}-{citing_index}"
 
     hash_object = hashlib.sha256(unique_string.encode())
     hash_hex = hash_object.hexdigest()
     
     return hash_hex
+

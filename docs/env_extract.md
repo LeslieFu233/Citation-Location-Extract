@@ -5,7 +5,8 @@ pipdeptree --warn silence | ForEach-Object { if ($_ -match "^[a-zA-Z]") { $_ } }
 ```
 ## Unix
 ### MacOS?
-### Linux
+> you can fix here, I don't have a mac, but I think it's same as other unix-like system :-(
+### Linux?
 
 
 
