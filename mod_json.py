@@ -11,7 +11,3 @@ def add_comma_to_middle_lines(file_path):
 
     with open(file_path, 'w', encoding='utf-8') as file:
         file.writelines(lines)
-
-
-file_path = './papers/gcb2020.json'
-add_comma_to_middle_lines(file_path)

@@ -3,6 +3,7 @@ from MatchObject import SimilarityMeasure, BinaryMeasure
 from collections import OrderedDict
 import re
 import hashlib
+
 def extract_first_number(str):
     match = re.search(r'\d+', str)
     return int(match.group(0)) if match else None
@@ -170,18 +171,6 @@ def get_parent_head(head_title_dic:OrderedDict, head_title, init_head_level=0):
         elif title == head_title:
             if level == 0 or level == target_level: return title
             find_flag = True
-# xml_path='D:\\CSTCloud\\programs\\references\\storage\\KFPULJ3T\\Kurganova 等 - 2023 - Temperature Sensitivity of Soil Respiration in Gra.xml'
-# bibls = getBiblStructs(xml_path)
-
-#     # target_group = ('Global carbon budget 2016', 'Quéré', '10.5194/essd-8-605-2016')
-# target_group = ('Global carbon budget 2019', 'Friedlingstein', '10.5194/essd-11-1783-2019')
-# bibl_id = getBestMatchBiblid(target_group, bibls)
-
-# if bibl_id == "None_Bibl":
-#     warnings.warn("no bibls, please check")
-
-# head_title = matchCitationHead(xml_path, bibl_id, surname='Friedlingstein', year='2019')
-# print(bibl_id, head_title)
 
 def generate_citation_hash(citing_title, referenced_title, citing_index):
 

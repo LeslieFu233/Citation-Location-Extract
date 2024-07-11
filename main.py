@@ -4,9 +4,11 @@ import os
 import json
 
 title_sentences = []
+# defines the cols of the result csv file
 title_sentences.append(("Citation ID","Location ID", "Citing Article Title", "Referenced Paper Title", "Citation Context", "Citation Function", "Citation Polarity"))
 
 def parse_target_group(file_name_without_extension):
+    """Parse the target group of the citation"""
     if file_name_without_extension == 'ERA5-Land':
         referenced_title = "Era5-land: a state-of-the-art global reanalysis dataset for land applications"
         referenced_author = "Munoz-Sabater"
@@ -62,6 +64,16 @@ def parse_target_group(file_name_without_extension):
     return referenced_title, referenced_author, referenced_doi, published_year
 
 def parse_citation(cite_json_path: str, start_id: int):
+    """
+    Parses citation information from a JSON file and extracts relevant data.
+
+    Args:
+        cite_json_path (str): The path to the JSON file containing citation data.
+        start_id (int): The starting ID for the citation.
+
+    Returns:
+        int: The updated starting ID for the citation.
+    """
     xml_paths = []
     with open(file_path, 'r', encoding='utf-8') as file:
         data = json.load(file)
