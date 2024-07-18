@@ -126,8 +126,11 @@ def parse_citation(cite_json_path: str, start_id: int):
             else:
                 for i in range(len(res)):
                     head_title = res[i][0]
-                    cite_sentence = res[i][1]
+                    # TODO: change var name
+                    cite_sentence = res[i][1][0]
+                    cite_sentence_word_count = res[i][1][1]
                     hash_value = generate_citation_hash(citing_paper_title, referenced_title, i)
+                    # TODO: add word count line or citing sentence line?
                     title_sentences.append((start_id, citing_paper_title, referenced_title, cite_sentence, head_title, ""))
                     start_id += 1
     return start_id

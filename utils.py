@@ -81,14 +81,17 @@ def get_related_sentence(index, sentences=[]):
     str: A string containing the sentences, with the citation marked.
     """
     related_sentence = ""
+    citing_sentence_word_count = 0
     for i in range(len(sentences)):
         if sentences[i].text == None:
             continue
         if i == index:
-            related_sentence += get_text_excluding_refs(sentences[i]) + " ######citaion##### "
+            citing_sentence = get_text_excluding_refs(sentences[i])
+            related_sentence +=  citing_sentence + " ######citaion##### "
+            citing_sentence_word_count = word_count(citing_sentence)
         else:
             related_sentence += get_text_excluding_refs(sentences[i])
-    return related_sentence
+    return related_sentence, citing_sentence_word_count
 
 def getBiblStructs(tei_path, namespace = "{http://www.tei-c.org/ns/1.0}"):
     """
