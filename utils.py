@@ -51,8 +51,18 @@ def word_count(text:str):
     text = re.sub(r'(\b[A-Za-z]+)\s+(\d+\b)', r'\1\2', text)
     words = nltk.tokenize.word_tokenize(text.lower())
     words = [word for word in words if word.isalnum()]
-    print(words)
     return len(words)
+
+def get_text_excluding_refs(element):
+    text = ''
+    if element.tag != 'ref':
+        if element.text:
+            text += element.text
+    for child in element:  # 递归处理子元素
+        text += get_text_excluding_refs(child)
+        if child.tail:
+            text += child.tail
+    return text
 
 def extract_first_number(str):
     """Extract the first number from a string."""
@@ -75,9 +85,9 @@ def get_related_sentence(index, sentences=[]):
         if sentences[i].text == None:
             continue
         if i == index:
-            related_sentence += sentences[i].text + " ######citaion##### "
+            related_sentence += get_text_excluding_refs(sentences[i]) + " ######citaion##### "
         else:
-            related_sentence += sentences[i].text
+            related_sentence += get_text_excluding_refs(sentences[i])
     return related_sentence
 
 def getBiblStructs(tei_path, namespace = "{http://www.tei-c.org/ns/1.0}"):
