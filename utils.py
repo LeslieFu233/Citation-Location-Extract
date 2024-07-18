@@ -4,6 +4,9 @@ from collections import OrderedDict
 import re
 import hashlib
 import PyPDF2
+import string
+import nltk
+nltk.download('punkt')
 
 def is_valid_pdf(file_path):
     """
@@ -42,6 +45,14 @@ def add_comma_to_middle_lines(file_path):
 
     with open(file_path, 'w', encoding='utf-8') as file:
         file.writelines(lines)
+
+def word_count(text:str):
+    text = text.translate(str.maketrans('', '', string.punctuation))
+    text = re.sub(r'(\b[A-Za-z]+)\s+(\d+\b)', r'\1\2', text)
+    words = nltk.tokenize.word_tokenize(text.lower())
+    words = [word for word in words if word.isalnum()]
+    print(words)
+    return len(words)
 
 def extract_first_number(str):
     """Extract the first number from a string."""
