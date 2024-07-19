@@ -64,6 +64,22 @@ def get_text_excluding_refs(element):
             text += child.tail
     return text
 
+def get_key_words(element:ET.Element, namespace="{http://www.tei-c.org/ns/1.0}") -> list:
+    """
+    Extracts the key words from a TEI XML element.
+
+    Args:
+        element (ET.Element): The TEI XML element to extract key words from.
+        namespace (str, optional): The namespace used in the TEI XML element. Defaults to "{http://www.tei-c.org/ns/1.0}".
+
+    Returns:
+        list: A list of key words extracted from the element.
+    """
+    key_words = []
+    for keyword in element.iter(namespace + 'term'):
+        key_words.append(keyword.text)
+    return key_words
+
 def extract_first_number(str):
     """Extract the first number from a string."""
     match = re.search(r'\d+', str)
@@ -132,20 +148,27 @@ def matchCitationHead(tei_path, bibl_id, namespace="{http://www.tei-c.org/ns/1.0
         year (str, optional): The year to match in the citation text. Defaults to None.
 
     Returns:
+        TODO: should add a description about the return list
         list: A list of matched citation items, each containing the section title and the related sentence.
 
     """
     tree = ET.parse(tei_path)
+    keywords = None
     body = None
     abstract = None 
+    keywords_list = []
     matched_items = []
     # get abstract and body from tei tree
     for i in tree.iter():
+        if 'keywords' in i.tag:
+            keywords = i
         if 'abstract' in i.tag:
             abstract = i
         if 'body' in i.tag:
             body = i
             break
+    if keywords != None:
+        keywords_list = get_key_words(keywords)
     abstract_title = abstract.find(namespace + 'div')
     if abstract_title != None:
         sentences = abstract_title.findall('.//' + namespace + 's')
