@@ -80,12 +80,24 @@ def get_key_words(element:ET.Element, namespace="{http://www.tei-c.org/ns/1.0}")
         key_words.append(keyword.text)
     return key_words
 
+def list2str(list:list):
+    """
+    Convert a list of strings to a single string.
+
+    Args:
+        list (list): The list of strings to convert.
+
+    Returns:
+        str: The single string containing all the strings from the list.
+    """
+    return ', '.join(list)
+
 def extract_first_number(str):
     """Extract the first number from a string."""
     match = re.search(r'\d+', str)
     return int(match.group(0)) if match else None
 
-def get_related_sentence(index, sentences=[]):
+def get_related_sentence(index, sentences=[], abstract_mode=False):
     """
     Returns a string containing the sentences from the given list, with the sentence at the specified index marked with "######citaion#####".
 
@@ -99,14 +111,19 @@ def get_related_sentence(index, sentences=[]):
     related_sentence = ""
     citing_sentence_word_count = 0
     for i in range(len(sentences)):
-        if sentences[i].text == None:
-            continue
-        if i == index:
-            citing_sentence = get_text_excluding_refs(sentences[i])
-            related_sentence +=  citing_sentence + " ######citaion##### "
-            citing_sentence_word_count = word_count(citing_sentence)
-        else:
+        if abstract_mode:
+            citing_sentence_word_count = word_count(related_sentence)
             related_sentence += get_text_excluding_refs(sentences[i])
+        else:
+            if sentences[i].text == None:
+                continue
+            if i == index:
+                citing_sentence = get_text_excluding_refs(sentences[i])
+                related_sentence +=  citing_sentence + " ######citaion##### "
+                citing_sentence_word_count = word_count(citing_sentence)
+            else:
+                related_sentence += get_text_excluding_refs(sentences[i])
+    
     return related_sentence, citing_sentence_word_count
 
 def getBiblStructs(tei_path, namespace = "{http://www.tei-c.org/ns/1.0}"):
@@ -156,6 +173,7 @@ def matchCitationHead(tei_path, bibl_id, namespace="{http://www.tei-c.org/ns/1.0
     keywords = None
     body = None
     abstract = None 
+    abstract_context = ("", 0)
     keywords_list = []
     matched_items = []
     # get abstract and body from tei tree
@@ -169,9 +187,10 @@ def matchCitationHead(tei_path, bibl_id, namespace="{http://www.tei-c.org/ns/1.0
             break
     if keywords != None:
         keywords_list = get_key_words(keywords)
-    abstract_title = abstract.find(namespace + 'div')
-    if abstract_title != None:
-        sentences = abstract_title.findall('.//' + namespace + 's')
+    abstract = abstract.find(namespace + 'div')
+    if abstract != None:
+        sentences = abstract.findall('.//' + namespace + 's')
+        abstract_context = get_related_sentence(-1, sentences, True)
         # match bibl_id in abstract's every sentence
         for s_index, sentence in enumerate(sentences):
             refs = sentence.findall('.//' + namespace + 'ref[@type="bibr"]')
@@ -183,34 +202,36 @@ def matchCitationHead(tei_path, bibl_id, namespace="{http://www.tei-c.org/ns/1.0
                 elif ref_text!=None and (year!=None and year in ref_text) and any(s.lower() in ref_text.lower() for s in surname):
                     matched_items.append(('Introduction', get_related_sentence(s_index, sentences)))
 
-    paras = body.findall(namespace + 'div')
+    chapters = body.findall(namespace + 'div')
     head_title_dic = OrderedDict()
-    for index, para in enumerate(paras):
+    for c_index, chapter in enumerate(chapters):
         # get head title and sentences from every para
-        head_title = para.find(namespace + 'head')
+        head_title = chapter.find(namespace + 'head')
         if(head_title != None):
             head_level = get_head_level(head_title)
             head_title = head_title.text
             head_title_dic[head_title] = head_level
-        sentences = para.findall('.//' + namespace + 's')
-        for s_index, sentence in enumerate(sentences):
-            # find all references in the sentence
-            refs = sentence.findall('.//' + namespace + 'ref[@type="bibr"]')
-            for ref in refs:
-                match_bibl_id =  ref.attrib.get('target')
-                ref_text = ref.text
-                if match_bibl_id == '#' + bibl_id:
-                    if head_title!=None:
+        paras = chapter.findall('.//' + namespace + 'p')
+        for p_index, para in enumerate(paras):
+            sentences = para.findall('.//' + namespace + 's')
+            for s_index, sentence in enumerate(sentences):
+                # find all references in the sentence
+                refs = sentence.findall(namespace + 'ref[@type="bibr"]')
+                for ref in refs:
+                    match_bibl_id =  ref.attrib.get('target')
+                    ref_text = ref.text
+                    if match_bibl_id == '#' + bibl_id:
+                        if head_title!=None:
+                            matched_items.append((get_parent_head(head_title_dic, head_title), get_related_sentence(s_index, sentences)))
+                        else:
+                            if(c_index == 0):    matched_items.append(('Introduction', get_related_sentence(s_index, sentences)))
+                            else:   matched_items.append(('NoTitle', get_related_sentence(s_index, sentences)))
+                    elif ref_text!=None and (year!=None and year in ref_text) and any(s.lower() in ref_text.lower() for s in surname):
                         matched_items.append((get_parent_head(head_title_dic, head_title), get_related_sentence(s_index, sentences)))
-                    else:
-                        if(index == 0):    matched_items.append(('Introduction', get_related_sentence(s_index, sentences)))
-                        else:   matched_items.append(('NoTitle', get_related_sentence(s_index, sentences)))
-                elif ref_text!=None and (year!=None and year in ref_text) and any(s.lower() in ref_text.lower() for s in surname):
-                    matched_items.append((get_parent_head(head_title_dic, head_title), get_related_sentence(s_index, sentences)))
-                
-                elif ref_text!=None and extract_first_number(ref_text)==extract_first_number(bibl_id) + 1:
-                    matched_items.append((get_parent_head(head_title_dic, head_title), get_related_sentence(s_index, sentences)))
-    return matched_items
+                    
+                    elif ref_text!=None and extract_first_number(ref_text)==extract_first_number(bibl_id) + 1:
+                        matched_items.append((get_parent_head(head_title_dic, head_title), get_related_sentence(s_index, sentences)))
+    return matched_items, abstract_context, (list2str(keywords_list), len(keywords_list))
 
 def getMatch(biblStruct:ET.Element, namespace = "{http://www.tei-c.org/ns/1.0}"):
     """
