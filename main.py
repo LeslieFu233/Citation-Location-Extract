@@ -120,18 +120,25 @@ def parse_citation(cite_json_path: str, start_id: int):
             warnings.warn("no bibls, please check")
             head_title, cite_sentence = None, None
         else:
-            res = matchCitationHead(xml_path, bibl_id, surname=[referenced_author], year=published_year)
-            if res == None:
+            match_items, abstract_context, keywords_context = matchCitationHead(xml_path, bibl_id, surname=[referenced_author], year=published_year)
+            if match_items == None:
                 head_title, cite_sentence = None, None
             else:
-                for i in range(len(res)):
-                    head_title = res[i][0]
-                    # TODO: change var name
-                    cite_sentence = res[i][1][0]
-                    cite_sentence_word_count = res[i][1][1]
+                abstract_text = abstract_context[0]
+                abstract_word_count = abstract_context[1]
+                keywords_text = keywords_context[0]
+                keywords_count = keywords_context[1]
+                for i in range(len(match_items)):
+                    head_title = match_items[i][0]
+                    citation_context = match_items[i][1]
+                    cite_sentence = citation_context[0]
+                    cite_sentence_word_count = citation_context[1]
+
                     hash_value = generate_citation_hash(citing_paper_title, referenced_title, i)
                     # TODO: add word count line or citing sentence line?
-                    title_sentences.append((start_id, citing_paper_title, referenced_title, cite_sentence, head_title, ""))
+                    if(start_id==1230):
+                        pass
+                    title_sentences.append((start_id, citing_paper_title, referenced_title, cite_sentence, cite_sentence_word_count, head_title, abstract_text, abstract_word_count, keywords_text, keywords_count))
                     start_id += 1
     return start_id
 
@@ -145,11 +152,8 @@ def list_files_in_directory(directory):
 
 # example
 directory = './papers'
-list_files = [
-    './papers/ERA5-Land.json',
-    './papers/gcb2020.json',
-    './papers/gmb2000-2017.json'
-]
+list_files = list_files_in_directory(directory)
+
 id = 0
 for file_path in list_files:
     id = parse_citation(file_path, id)
@@ -157,8 +161,8 @@ for file_path in list_files:
 
 import csv
 # Open (or create) a CSV file with write mode ('w')
-with open('result_regular_3.csv', 'w', newline='', encoding='utf-8') as file:
+with open('result_regular_test.csv', 'w', newline='', encoding='utf-8') as file:
     writer = csv.writer(file)
     for tup in title_sentences:
-        writer.writerow([tup[0], tup[1], tup[2], tup[3], tup[4], tup[5]])
+        writer.writerow([tup[i] for i in range(len(tup))])
 pass
