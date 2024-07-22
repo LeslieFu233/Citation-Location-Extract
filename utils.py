@@ -216,7 +216,7 @@ def matchCitationHead(tei_path, bibl_id, namespace="{http://www.tei-c.org/ns/1.0
             sentences = para.findall('.//' + namespace + 's')
             for s_index, sentence in enumerate(sentences):
                 # find all references in the sentence
-                refs = sentence.findall(namespace + 'ref[@type="bibr"]')
+                refs = sentence.findall('.//' + namespace + 'ref[@type="bibr"]')
                 for ref in refs:
                     match_bibl_id =  ref.attrib.get('target')
                     ref_text = ref.text
