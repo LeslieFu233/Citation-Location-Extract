@@ -7,6 +7,7 @@ import PyPDF2
 import string
 import nltk
 nltk.download('punkt')
+from simhash import Simhash
 
 def is_valid_pdf(file_path):
     """
@@ -119,7 +120,7 @@ def get_related_sentence(index, sentences=[], abstract_mode=False):
                 continue
             if i == index:
                 citing_sentence = get_text_excluding_refs(sentences[i])
-                related_sentence +=  citing_sentence + " ######citaion##### "
+                related_sentence +=  citing_sentence + " ######citation##### "
                 citing_sentence_word_count = word_count(citing_sentence)
             else:
                 related_sentence += get_text_excluding_refs(sentences[i])
@@ -376,24 +377,26 @@ def get_parent_head(head_title_dic: OrderedDict, head_title, init_head_level=0):
                 return title
             find_flag = True
 
+"""Functions about citation's similarity hash"""
 import hashlib
 
-def generate_citation_hash(citing_title, referenced_title, citing_index):
-    """
-    Generate a hash value for a citation based on the citing title, referenced title, and citing index.
-
-    Args:
-        citing_title (str): The title of the citing document.
-        referenced_title (str): The title of the referenced document.
-        citing_index (int): The index of the citation.
-
-    Returns:
-        str: The hash value generated for the citation.
-    """
-    unique_string = f"{citing_title}-{referenced_title}-{citing_index}"
-
-    hash_object = hashlib.sha256(unique_string.encode())
-    hash_hex = hash_object.hexdigest()
+def extract_sentence_with_citation(citation_para_text):
+    """Extract the sentence with citation from the citation paragraph text if needed."""
+    parts = citation_para_text.split('######citaion#####')
+    if len(parts) > 1:
+        before_citation = parts[0].rsplit('.', 1)[-1]
+        return before_citation + '.'
+    else:
+        return ''
     
-    return hash_hex
+def generate_citation_hash(citing_title, referenced_title, citing_sentence):
+    citing_sentence = citing_sentence.lower()
+    unique_string = f"{citing_title}-{referenced_title}-{citing_sentence}"
+    return Simhash(unique_string)
+
+def compare_cition_hash(hash1, hash2, threshold):
+    """Compare two citation hashes with a given threshold."""
+    if not hash1 or not hash2:
+        raise ValueError("Invalid hash input.")
+    return hash1.distance(hash2) < threshold
 
