@@ -4,8 +4,6 @@ import os
 import json
 
 title_sentences = []
-# defines the cols of the result csv file
-title_sentences.append(("Citation ID","Location ID", "Citing Article Title", "Referenced Paper Title", "Citation Context", "Citation Function", "Citation Polarity"))
 
 def parse_target_group(file_name_without_extension):
     """Parse the target group of the citation.
@@ -118,11 +116,11 @@ def parse_citation(cite_json_path: str, start_id: int):
         citing_paper_title = key_cite_title
         if bibl_id == "None_Bibl":
             warnings.warn("no bibls, please check")
-            head_title, cite_sentence = None, None
+            head_title, cite_para = None, None
         else:
             match_items, abstract_context, keywords_context = matchCitationHead(xml_path, bibl_id, surname=[referenced_author], year=published_year)
             if match_items == None:
-                head_title, cite_sentence = None, None
+                head_title, cite_para = None, None
             else:
                 abstract_text = abstract_context[0]
                 abstract_word_count = abstract_context[1]
@@ -131,16 +129,12 @@ def parse_citation(cite_json_path: str, start_id: int):
                 for i in range(len(match_items)):
                     head_title = match_items[i][0]
                     citation_context = match_items[i][1]
-                    cite_sentence = citation_context[0]
+                    cite_para = citation_context[0]
                     cite_sentence_word_count = citation_context[1]
-
-                    hash_value = generate_citation_hash(citing_paper_title, referenced_title, i)
-                    # TODO: add word count line or citing sentence line?
-                    if(start_id==1230):
-                        pass
-                    title_sentences.append((start_id, citing_paper_title, referenced_title, cite_sentence, cite_sentence_word_count, head_title, abstract_text, abstract_word_count, keywords_text, keywords_count))
-                    start_id += 1
-    return start_id
+                    citing_sentence = citation_context[2]
+                    hash_value = generate_citation_hash(citing_paper_title, referenced_title, citing_sentence)
+                    hash_value = hash_value.value
+                    title_sentences.append((hash_value, citing_paper_title, referenced_title, cite_para, cite_sentence_word_count, head_title, abstract_text, abstract_word_count, keywords_text, keywords_count))
 
 def list_files_in_directory(directory):
     file_paths = []
@@ -160,9 +154,11 @@ for file_path in list_files:
 
 
 import csv
+headers = ["Citation ID", "Citing Paper Title", "Referenced Paper Title", "Citation Content", "Citation Sentence Word Count", "Head Title", "Abstract Text", "Abstract Word Count", "Keywords Text", "Keywords Count"]
 # Open (or create) a CSV file with write mode ('w')
 with open('result_regular_test.csv', 'w', newline='', encoding='utf-8') as file:
     writer = csv.writer(file)
+    writer.writerow(headers)
     for tup in title_sentences:
         writer.writerow([tup[i] for i in range(len(tup))])
 pass
