@@ -111,6 +111,7 @@ def get_related_sentence(index, sentences=[], abstract_mode=False):
     """
     related_sentence = ""
     citing_sentence_word_count = 0
+    citing_sentence = ""
     for i in range(len(sentences)):
         if abstract_mode:
             citing_sentence_word_count = word_count(related_sentence)
@@ -120,12 +121,12 @@ def get_related_sentence(index, sentences=[], abstract_mode=False):
                 continue
             if i == index:
                 citing_sentence = get_text_excluding_refs(sentences[i])
-                related_sentence +=  citing_sentence + " ######citation##### "
+                related_sentence +=  citing_sentence + " ######citaion##### "
                 citing_sentence_word_count = word_count(citing_sentence)
             else:
                 related_sentence += get_text_excluding_refs(sentences[i])
     
-    return related_sentence, citing_sentence_word_count
+    return related_sentence, citing_sentence_word_count, citing_sentence
 
 def getBiblStructs(tei_path, namespace = "{http://www.tei-c.org/ns/1.0}"):
     """
@@ -380,7 +381,7 @@ def get_parent_head(head_title_dic: OrderedDict, head_title, init_head_level=0):
 """Functions about citation's similarity hash"""
 import hashlib
 
-def extract_sentence_with_citation(citation_para_text):
+def extract_sentence_with_citation(citation_para_text:str):
     """Extract the sentence with citation from the citation paragraph text if needed."""
     parts = citation_para_text.split('######citaion#####')
     if len(parts) > 1:
@@ -394,7 +395,11 @@ def generate_citation_hash(citing_title, referenced_title, citing_sentence):
     unique_string = f"{citing_title}-{referenced_title}-{citing_sentence}"
     return Simhash(unique_string)
 
-def compare_cition_hash(hash1, hash2, threshold):
+def get_hash_distance(hash1:Simhash, hash2:Simhash):
+    """Calculate the distance between two hashes."""
+    return hash1.distance(hash2)
+
+def compare_cition_hash(hash1:Simhash, hash2:Simhash, threshold):
     """Compare two citation hashes with a given threshold."""
     if not hash1 or not hash2:
         raise ValueError("Invalid hash input.")
