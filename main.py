@@ -2,6 +2,7 @@ from utils import *
 import warnings
 import os
 import json
+#aaa
 
 title_sentences = []
 
@@ -110,6 +111,7 @@ def parse_citation(cite_json_path: str, start_id: int):
         if(bibls==None):
             continue
         target_group = (referenced_title, referenced_author, referenced_doi)
+        #Finds the best matching bibl ID based on the target group and match weights.
         bibl_id = getBestMatchBiblid(target_group, bibls)
         res = []
         xml_dir, xml_filename = os.path.split(xml_path)
