@@ -8,6 +8,7 @@ import string
 import nltk
 nltk.download('punkt')
 from simhash import Simhash
+from bs4 import BeautifulSoup
 
 def is_valid_pdf(file_path):
     """
@@ -377,6 +378,13 @@ def get_parent_head(head_title_dic: OrderedDict, head_title, init_head_level=0):
             if level == 0 or level == target_level:
                 return title
             find_flag = True
+
+"""定义一个函数，用于清理HTML文本"""
+def clean_html(html_text):
+    # 使用BeautifulSoup库解析HTML文本
+    soup = BeautifulSoup(html_text, "html.parser")
+    # 返回清理后的文本
+    return soup.get_text()
 
 """Functions about citation's similarity hash"""
 import hashlib
