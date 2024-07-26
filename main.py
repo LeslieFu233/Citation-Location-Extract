@@ -14,7 +14,7 @@ def parse_target_group(file_name_without_extension):
 
     Returns:
         tuple: A tuple containing the referenced title, author, DOI, and published year.
-               If the file name is not recognized, all values in the tuple will be None.
+        If the file name is not recognized, all values in the tuple will be None.
     """
     if file_name_without_extension == 'ERA5-Land':
         referenced_title = "Era5-land: a state-of-the-art global reanalysis dataset for land applications"
@@ -115,6 +115,7 @@ def parse_citation(cite_json_path: str, start_id: int):
         bibl_id = getBestMatchBiblid(target_group, bibls)
         res = []
         xml_dir, xml_filename = os.path.split(xml_path)
+        #clean html from key_cite_title
         citing_paper_title = clean_html(key_cite_title)
         if bibl_id == "None_Bibl":
             warnings.warn("no bibls, please check")
@@ -135,8 +136,8 @@ def parse_citation(cite_json_path: str, start_id: int):
                     cite_sentence_word_count = citation_context[1]
                     citing_sentence = citation_context[2]
                     hash_value = generate_citation_hash(citing_paper_title, referenced_title, citing_sentence)
-                    hash_value = hash_value.value
-                    title_sentences.append((hash_value, citing_paper_title, referenced_title, cite_para, cite_sentence_word_count, head_title, abstract_text, abstract_word_count, keywords_text, keywords_count))
+                    hash_hex_value = f"{hash_value.value:016x}"
+                    title_sentences.append((hash_hex_value, citing_paper_title, referenced_title, cite_para, cite_sentence_word_count, head_title, abstract_text, abstract_word_count, keywords_text, keywords_count))
 
 def list_files_in_directory(directory):
     file_paths = []
@@ -146,28 +147,31 @@ def list_files_in_directory(directory):
             file_paths.append(os.path.join(root, file))
     return file_paths
 
-# example
-directory = './papers'
+#example
+directory = 'papers'
 list_files = list_files_in_directory(directory)
 
 id = 0
 for file_path in list_files:
+    print(file_path)
     id = parse_citation(file_path, id)
+
+
 
 
 import csv
 headers = ["Citation ID", "Citing Paper Title", "Referenced Paper Title", "Citation Content", "Citation Sentence Word Count", "Head Title", "Abstract Text", "Abstract Word Count", "Keywords Text", "Keywords Count"]
-# Open (or create) a CSV file with write mode ('w')
-with open('result_regular_test.csv', 'w', newline='', encoding='utf-8') as file:
-    writer = csv.writer(file)
-    writer.writerow(headers)
-    for tup in title_sentences:
-        writer.writerow([tup[i] for i in range(len(tup))])
-pass
+#Open (or create) a CSV file with write mode ('w')
+# with open('result_regular_test.csv', 'w', newline='', encoding='utf-8') as file:
+#     writer = csv.writer(file)
+#     writer.writerow(headers)
+#     for tup in title_sentences:
+#         writer.writerow([tup[i] for i in range(len(tup))])
+# pass
 
 #直接生成xlsx文件
-# 将元组列表转换为 DataFrame
-#df = pd.DataFrame(title_sentences, columns=headers)
+#将元组列表转换为 DataFrame
+df = pd.DataFrame(title_sentences, columns=headers)
 
 # 将 DataFrame 写入 Excel 文件
-#df.to_excel("output.xlsx", index=False)
+df.to_excel("output.xlsx", index=False)
