@@ -7,6 +7,8 @@ import PyPDF2
 import string
 import nltk
 nltk.download('punkt')
+from simhash import Simhash
+from bs4 import BeautifulSoup
 
 def is_valid_pdf(file_path):
     """
@@ -64,12 +66,40 @@ def get_text_excluding_refs(element):
             text += child.tail
     return text
 
+def get_key_words(element:ET.Element, namespace="{http://www.tei-c.org/ns/1.0}") -> list:
+    """
+    Extracts the key words from a TEI XML element.
+
+    Args:
+        element (ET.Element): The TEI XML element to extract key words from.
+        namespace (str, optional): The namespace used in the TEI XML element. Defaults to "{http://www.tei-c.org/ns/1.0}".
+
+    Returns:
+        list: A list of key words extracted from the element.
+    """
+    key_words = []
+    for keyword in element.iter(namespace + 'term'):
+        key_words.append(keyword.text)
+    return key_words
+
+def list2str(list:list):
+    """
+    Convert a list of strings to a single string.
+
+    Args:
+        list (list): The list of strings to convert.
+
+    Returns:
+        str: The single string containing all the strings from the list.
+    """
+    return ', '.join(list)
+
 def extract_first_number(str):
     """Extract the first number from a string."""
     match = re.search(r'\d+', str)
     return int(match.group(0)) if match else None
 
-def get_related_sentence(index, sentences=[]):
+def get_related_sentence(index, sentences=[], abstract_mode=False):
     """
     Returns a string containing the sentences from the given list, with the sentence at the specified index marked with "######citaion#####".
 
@@ -82,16 +112,22 @@ def get_related_sentence(index, sentences=[]):
     """
     related_sentence = ""
     citing_sentence_word_count = 0
+    citing_sentence = ""
     for i in range(len(sentences)):
-        if sentences[i].text == None:
-            continue
-        if i == index:
-            citing_sentence = get_text_excluding_refs(sentences[i])
-            related_sentence +=  citing_sentence + " ######citaion##### "
-            citing_sentence_word_count = word_count(citing_sentence)
-        else:
+        if abstract_mode:
+            citing_sentence_word_count = word_count(related_sentence)
             related_sentence += get_text_excluding_refs(sentences[i])
-    return related_sentence, citing_sentence_word_count
+        else:
+            if sentences[i].text == None:
+                continue
+            if i == index:
+                citing_sentence = get_text_excluding_refs(sentences[i])
+                related_sentence +=  citing_sentence + " ######citaion##### "
+                citing_sentence_word_count = word_count(citing_sentence)
+            else:
+                related_sentence += get_text_excluding_refs(sentences[i])
+    
+    return related_sentence, citing_sentence_word_count, citing_sentence
 
 def getBiblStructs(tei_path, namespace = "{http://www.tei-c.org/ns/1.0}"):
     """
@@ -132,23 +168,32 @@ def matchCitationHead(tei_path, bibl_id, namespace="{http://www.tei-c.org/ns/1.0
         year (str, optional): The year to match in the citation text. Defaults to None.
 
     Returns:
+        TODO: should add a description about the return list
         list: A list of matched citation items, each containing the section title and the related sentence.
 
     """
     tree = ET.parse(tei_path)
+    keywords = None
     body = None
     abstract = None 
+    abstract_context = ("", 0)
+    keywords_list = []
     matched_items = []
     # get abstract and body from tei tree
     for i in tree.iter():
+        if 'keywords' in i.tag:
+            keywords = i
         if 'abstract' in i.tag:
             abstract = i
         if 'body' in i.tag:
             body = i
             break
-    abstract_title = abstract.find(namespace + 'div')
-    if abstract_title != None:
-        sentences = abstract_title.findall('.//' + namespace + 's')
+    if keywords != None:
+        keywords_list = get_key_words(keywords)
+    abstract = abstract.find(namespace + 'div')
+    if abstract != None:
+        sentences = abstract.findall('.//' + namespace + 's')
+        abstract_context = get_related_sentence(-1, sentences, True)
         # match bibl_id in abstract's every sentence
         for s_index, sentence in enumerate(sentences):
             refs = sentence.findall('.//' + namespace + 'ref[@type="bibr"]')
@@ -160,34 +205,36 @@ def matchCitationHead(tei_path, bibl_id, namespace="{http://www.tei-c.org/ns/1.0
                 elif ref_text!=None and (year!=None and year in ref_text) and any(s.lower() in ref_text.lower() for s in surname):
                     matched_items.append(('Introduction', get_related_sentence(s_index, sentences)))
 
-    paras = body.findall(namespace + 'div')
+    chapters = body.findall(namespace + 'div')
     head_title_dic = OrderedDict()
-    for index, para in enumerate(paras):
+    for c_index, chapter in enumerate(chapters):
         # get head title and sentences from every para
-        head_title = para.find(namespace + 'head')
+        head_title = chapter.find(namespace + 'head')
         if(head_title != None):
             head_level = get_head_level(head_title)
             head_title = head_title.text
             head_title_dic[head_title] = head_level
-        sentences = para.findall('.//' + namespace + 's')
-        for s_index, sentence in enumerate(sentences):
-            # find all references in the sentence
-            refs = sentence.findall('.//' + namespace + 'ref[@type="bibr"]')
-            for ref in refs:
-                match_bibl_id =  ref.attrib.get('target')
-                ref_text = ref.text
-                if match_bibl_id == '#' + bibl_id:
-                    if head_title!=None:
+        paras = chapter.findall('.//' + namespace + 'p')
+        for p_index, para in enumerate(paras):
+            sentences = para.findall('.//' + namespace + 's')
+            for s_index, sentence in enumerate(sentences):
+                # find all references in the sentence
+                refs = sentence.findall('.//' + namespace + 'ref[@type="bibr"]')
+                for ref in refs:
+                    match_bibl_id =  ref.attrib.get('target')
+                    ref_text = ref.text
+                    if match_bibl_id == '#' + bibl_id:
+                        if head_title!=None:
+                            matched_items.append((get_parent_head(head_title_dic, head_title), get_related_sentence(s_index, sentences)))
+                        else:
+                            if(c_index == 0):    matched_items.append(('Introduction', get_related_sentence(s_index, sentences)))
+                            else:   matched_items.append(('NoTitle', get_related_sentence(s_index, sentences)))
+                    elif ref_text!=None and (year!=None and year in ref_text) and any(s.lower() in ref_text.lower() for s in surname):
                         matched_items.append((get_parent_head(head_title_dic, head_title), get_related_sentence(s_index, sentences)))
-                    else:
-                        if(index == 0):    matched_items.append(('Introduction', get_related_sentence(s_index, sentences)))
-                        else:   matched_items.append(('NoTitle', get_related_sentence(s_index, sentences)))
-                elif ref_text!=None and (year!=None and year in ref_text) and any(s.lower() in ref_text.lower() for s in surname):
-                    matched_items.append((get_parent_head(head_title_dic, head_title), get_related_sentence(s_index, sentences)))
-                
-                elif ref_text!=None and extract_first_number(ref_text)==extract_first_number(bibl_id) + 1:
-                    matched_items.append((get_parent_head(head_title_dic, head_title), get_related_sentence(s_index, sentences)))
-    return matched_items
+                    
+                    elif ref_text!=None and extract_first_number(ref_text)==extract_first_number(bibl_id) + 1:
+                        matched_items.append((get_parent_head(head_title_dic, head_title), get_related_sentence(s_index, sentences)))
+    return matched_items, abstract_context, (list2str(keywords_list), len(keywords_list))
 
 def getMatch(biblStruct:ET.Element, namespace = "{http://www.tei-c.org/ns/1.0}"):
     """
@@ -332,24 +379,37 @@ def get_parent_head(head_title_dic: OrderedDict, head_title, init_head_level=0):
                 return title
             find_flag = True
 
+"""定义一个函数，用于清理HTML文本"""
+def clean_html(html_text):
+    # 使用BeautifulSoup库解析HTML文本
+    soup = BeautifulSoup(html_text, "html.parser")
+    # 返回清理后的文本
+    return soup.get_text()
+
+"""Functions about citation's similarity hash"""
 import hashlib
 
-def generate_citation_hash(citing_title, referenced_title, citing_index):
-    """
-    Generate a hash value for a citation based on the citing title, referenced title, and citing index.
-
-    Args:
-        citing_title (str): The title of the citing document.
-        referenced_title (str): The title of the referenced document.
-        citing_index (int): The index of the citation.
-
-    Returns:
-        str: The hash value generated for the citation.
-    """
-    unique_string = f"{citing_title}-{referenced_title}-{citing_index}"
-
-    hash_object = hashlib.sha256(unique_string.encode())
-    hash_hex = hash_object.hexdigest()
+def extract_sentence_with_citation(citation_para_text:str):
+    """Extract the sentence with citation from the citation paragraph text if needed."""
+    parts = citation_para_text.split('######citaion#####')
+    if len(parts) > 1:
+        before_citation = parts[0].rsplit('.', 1)[-1]
+        return before_citation + '.'
+    else:
+        return ''
     
-    return hash_hex
+def generate_citation_hash(citing_title, referenced_title, citing_sentence):
+    citing_sentence = citing_sentence.lower()
+    unique_string = f"{citing_title}-{referenced_title}-{citing_sentence}"
+    return Simhash(unique_string)
+
+def get_hash_distance(hash1:Simhash, hash2:Simhash):
+    """Calculate the distance between two hashes."""
+    return hash1.distance(hash2)
+
+def compare_cition_hash(hash1:Simhash, hash2:Simhash, threshold):
+    """Compare two citation hashes with a given threshold."""
+    if not hash1 or not hash2:
+        raise ValueError("Invalid hash input.")
+    return hash1.distance(hash2) < threshold
 
