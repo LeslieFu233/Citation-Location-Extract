@@ -2,6 +2,7 @@ from utils import *
 import warnings
 import os
 import json
+import pandas as pd
 
 title_sentences = []
 
@@ -114,7 +115,7 @@ def parse_citation(cite_json_path: str, start_id: int):
         bibl_id = getBestMatchBiblid(target_group, bibls)
         res = []
         xml_dir, xml_filename = os.path.split(xml_path)
-        citing_paper_title = key_cite_title
+        citing_paper_title = clean_html(key_cite_title)
         if bibl_id == "None_Bibl":
             warnings.warn("no bibls, please check")
             head_title, cite_para = None, None
@@ -159,3 +160,10 @@ with open('result_regular_test_hash.csv', 'w', newline='', encoding='utf-8') as 
     for tup in title_sentences:
         writer.writerow([tup[i] for i in range(len(tup))])
 pass
+
+#直接生成xlsx文件
+# 将元组列表转换为 DataFrame
+#df = pd.DataFrame(title_sentences, columns=headers)
+
+# 将 DataFrame 写入 Excel 文件
+#df.to_excel("output.xlsx", index=False)
