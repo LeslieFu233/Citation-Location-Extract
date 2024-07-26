@@ -90,7 +90,7 @@ def parse_citation(cite_json_path: str, start_id: int):
         int: The updated starting ID for the citation.
     """
     xml_paths = []
-    with open(file_path, 'r', encoding='utf-8') as file:
+    with open(cite_json_path, 'r', encoding='utf-8') as file:
         data = json.load(file)
         # data.keys() returns all titles of the papers
         keys_list = list(data.keys())
@@ -134,8 +134,8 @@ def parse_citation(cite_json_path: str, start_id: int):
                     cite_sentence_word_count = citation_context[1]
                     citing_sentence = citation_context[2]
                     hash_value = generate_citation_hash(citing_paper_title, referenced_title, citing_sentence)
-                    hash_value = hash_value.value
-                    title_sentences.append((hash_value, citing_paper_title, referenced_title, cite_para, cite_sentence_word_count, head_title, abstract_text, abstract_word_count, keywords_text, keywords_count))
+                    hash_hex_value = f"{hash_value.value:016x}"
+                    title_sentences.append((hash_hex_value, citing_paper_title, referenced_title, cite_para, cite_sentence_word_count, head_title, abstract_text))
 
 def list_files_in_directory(directory):
     file_paths = []
@@ -148,16 +148,12 @@ def list_files_in_directory(directory):
 # example
 directory = './papers'
 list_files = list_files_in_directory(directory)
-
-id = 0
-for file_path in list_files:
-    id = parse_citation(file_path, id)
-
-
+for file in list_files:
+    parse_citation(file, 0)
 import csv
-headers = ["Citation ID", "Citing Paper Title", "Referenced Paper Title", "Citation Content", "Citation Sentence Word Count", "Head Title", "Abstract Text", "Abstract Word Count", "Keywords Text", "Keywords Count"]
+headers = ["Citation ID", "Citing Paper Title", "Data Paper Title", "Citation Content", "Citation Sentence Word Count", "Head Title", "Abstract Text"]
 # Open (or create) a CSV file with write mode ('w')
-with open('result_regular_test.csv', 'w', newline='', encoding='utf-8') as file:
+with open('result_regular_test_hash.csv', 'w', newline='', encoding='utf-8') as file:
     writer = csv.writer(file)
     writer.writerow(headers)
     for tup in title_sentences:
