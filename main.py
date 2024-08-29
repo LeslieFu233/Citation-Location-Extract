@@ -131,12 +131,13 @@ def parse_citation(cite_json_path: str, start_id: int):
                 for i in range(len(match_items)):
                     head_title = match_items[i][0]
                     citation_context = match_items[i][1]
+                    cite_detection_method = match_items[i][2]
                     cite_para = citation_context[0]
                     cite_sentence_word_count = citation_context[1]
                     citing_sentence = citation_context[2]
                     hash_value = generate_citation_hash(citing_paper_title, referenced_title, citing_sentence)
                     hash_hex_value = f"{hash_value.value:016x}"
-                    title_sentences.append((hash_hex_value, citing_paper_title, referenced_title, cite_para, cite_sentence_word_count, head_title, abstract_text))
+                    title_sentences.append((hash_hex_value, citing_paper_title, referenced_title, cite_para, cite_detection_method, cite_sentence_word_count, head_title, abstract_text))
 
 def list_files_in_directory(directory):
     file_paths = []
@@ -147,25 +148,31 @@ def list_files_in_directory(directory):
     return file_paths
 
 # example
-directory = './papers'
+directory = 'papers'
 list_files = list_files_in_directory(directory)
 
 for file in list_files:
     parse_citation(file, 0)
-    
+
+#test
+# file = "papers/test.json"
+# parse_citation(file,0)
+
 import csv
-headers = ["Citation ID", "Citing Paper Title", "Data Paper Title", "Citation Content", "Citation Sentence Word Count", "Head Title", "Abstract Text"]
+headers = ["Citation ID", "Citing Paper Title", "Data Paper Title", "Citation Content", "Detection Method","Citation Sentence Word Count", "Head Title", "Abstract Text"]
 # Open (or create) a CSV file with write mode ('w')
-with open('result_regular_test_hash.csv', 'w', newline='', encoding='utf-8') as file:
-    writer = csv.writer(file)
-    writer.writerow(headers)
-    for tup in title_sentences:
-        writer.writerow([tup[i] for i in range(len(tup))])
-pass
+# with open('result_regular_test_hash.csv', 'w', newline='', encoding='utf-8') as file:
+#     writer = csv.writer(file)
+#     writer.writerow(headers)
+#     for tup in title_sentences:
+#         writer.writerow([tup[i] for i in range(len(tup))])
+# pass
 
 #直接生成xlsx文件
 # 将元组列表转换为 DataFrame
-#df = pd.DataFrame(title_sentences, columns=headers)
+df = pd.DataFrame(title_sentences, columns=headers)
 
-# 将 DataFrame 写入 Excel 文件
-#df.to_excel("output.xlsx", index=False)
+#将 DataFrame 写入 Excel 文件
+df.to_excel("output-处理不加井号的问题.xlsx", index=False)
+
+#df.to_excel("aaa.xlsx", index=False)

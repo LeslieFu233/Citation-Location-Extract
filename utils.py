@@ -118,8 +118,8 @@ def get_related_sentence(index, sentences=[], abstract_mode=False):
             citing_sentence_word_count = word_count(related_sentence)
             related_sentence += get_text_excluding_refs(sentences[i])
         else:
-            if sentences[i].text == None:
-                continue
+            # if sentences[i].text == None:
+            #     continue
             if i == index:
                 citing_sentence = get_text_excluding_refs(sentences[i])
                 related_sentence +=  citing_sentence + " ######citaion##### "
@@ -201,9 +201,9 @@ def matchCitationHead(tei_path, bibl_id, namespace="{http://www.tei-c.org/ns/1.0
                 match_bibl_id =  ref.attrib.get('target')
                 ref_text = ref.text
                 if match_bibl_id == '#' + bibl_id:
-                    matched_items.append(('Introduction', get_related_sentence(s_index, sentences)))
+                    matched_items.append(('Introduction', get_related_sentence(s_index, sentences), 'abstract-biblid'))
                 elif ref_text!=None and (year!=None and year in ref_text) and any(s.lower() in ref_text.lower() for s in surname):
-                    matched_items.append(('Introduction', get_related_sentence(s_index, sentences)))
+                    matched_items.append(('Introduction', get_related_sentence(s_index, sentences), 'abstract-year-surname'))
 
     chapters = body.findall(namespace + 'div')
     head_title_dic = OrderedDict()
@@ -225,15 +225,15 @@ def matchCitationHead(tei_path, bibl_id, namespace="{http://www.tei-c.org/ns/1.0
                     ref_text = ref.text
                     if match_bibl_id == '#' + bibl_id:
                         if head_title!=None:
-                            matched_items.append((get_parent_head(head_title_dic, head_title), get_related_sentence(s_index, sentences)))
+                            matched_items.append((get_parent_head(head_title_dic, head_title), get_related_sentence(s_index, sentences), 'div-head-biblid'))
                         else:
-                            if(c_index == 0):    matched_items.append(('Introduction', get_related_sentence(s_index, sentences)))
-                            else:   matched_items.append(('NoTitle', get_related_sentence(s_index, sentences)))
+                            if(c_index == 0):    matched_items.append(('Introduction', get_related_sentence(s_index, sentences), 'div-cindex0-biblid'))
+                            else:   matched_items.append(('NoTitle', get_related_sentence(s_index, sentences), 'div-notitle-biblid'))
                     elif ref_text!=None and (year!=None and year in ref_text) and any(s.lower() in ref_text.lower() for s in surname):
-                        matched_items.append((get_parent_head(head_title_dic, head_title), get_related_sentence(s_index, sentences)))
+                        matched_items.append((get_parent_head(head_title_dic, head_title), get_related_sentence(s_index, sentences), 'div-year-surname'))
                     
-                    elif ref_text!=None and extract_first_number(ref_text)==extract_first_number(bibl_id) + 1:
-                        matched_items.append((get_parent_head(head_title_dic, head_title), get_related_sentence(s_index, sentences)))
+                    # elif ref_text!=None and extract_first_number(ref_text)==extract_first_number(bibl_id) + 1:
+                    #     matched_items.append((get_parent_head(head_title_dic, head_title), get_related_sentence(s_index, sentences)))
     return matched_items, abstract_context, (list2str(keywords_list), len(keywords_list))
 
 def getMatch(biblStruct:ET.Element, namespace = "{http://www.tei-c.org/ns/1.0}"):
